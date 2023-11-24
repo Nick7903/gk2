@@ -4,14 +4,14 @@
 #define ROTR(x,n)	(x>>n) | (x<<(32-n))
 #define ROTL(x,n)	(x<<n) | (x>>(32-n))
 
-#define CH(x,y,z)	((x & y) ^ (~x & z))
-#define MAJ(x,y,z)	(((x & y) ^ (x & z)) ^ (y & z))
+#define CH(x,y,z)	(x & y) ^ (!x & z)
+#define MAJ(x,y,z)	(z & y) ^ (x & z) ^ (y & z)
 
-#define BSIG0(x)	((ROTR(x,2)) ^ (ROTR(x,12))) ^ (ROTR(x,22))
-#define BSIG1(x)	((ROTR(x,6)) ^ (ROTR(x,11))) ^ (ROTR(x,25))
+#define BSIG0(x)	ROTR(x,28) ^ ROTR(x,34) ^ ROTR(x,39)
+#define BSIG1(x)	ROTR(x,14) ^ ROTR(x,18) ^ ROTR(x,41)
 
-#define SSIG0(x)	((ROTR(x,7)) ^ (ROTR(x,18))) ^ (x>>3)
-#define SSIG1(x)	((ROTR(x,17)) ^ (ROTR(x,19))) ^ (x>>10)
+#define SSIG0(x)	ROTR(x,1) ^ ROTR(x,8) ^ (x>>3)
+#define SSIG1(x)	ROTR(x,19) ^ ROTR(x,61) ^ (x>>10)
 
 #define uint32_MAX 	4294967295
 
@@ -53,13 +53,21 @@ int sha224(char* string, char* hashOutput)
 	// Set messagelength+1 to 0b10000000
 	mbindex++;
 
-	messageblocks[mbindex/64][mbindex-(mbindex/64)-1] = 0x80;
+	messageblocks[mbindex/64][mbindex-(mbindex/64)] = 0x80;
 
 	// Insert messagelength as last 8 bytes (MD strengthening)
 	for (uint32_t i = 0; i < 8; i++)
 	{
 		messageblocks[messagelength/64][64-i] = (uint8_t)((messagelength>>(i*8)) & 0xff);
 	}
+
+	printf("messagelength:	%lld\n",messagelength);
+	printBits(messageblocks[messagelength/64][59]);
+	printBits(messageblocks[messagelength/64][60]);
+	printBits(messageblocks[messagelength/64][61]);
+	printBits(messageblocks[messagelength/64][62]);
+	printBits(messageblocks[messagelength/64][63]);
+	printBits(messageblocks[messagelength/64][64]);
 
 	uint32_t K[64] = {
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
@@ -81,45 +89,34 @@ int sha224(char* string, char* hashOutput)
 	};
 
 
-	uint32_t a = 0xc1059ed8;
-	uint32_t b = 0x367cd507;
-	uint32_t c = 0x3070dd17;
-	uint32_t d = 0xf70e5939;
-	uint32_t e = 0xffc00b31;
-	uint32_t f = 0x68581511;
-	uint32_t g = 0x64f98fa7;
-	uint32_t h = 0xbefa4fa4; // Irrelevant for sha224
+	uint32_t hash = {
+		0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939,
+		0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4
+	};
 
-	uint32_t a__ = 0;
-	uint32_t b__ = 0;
-	uint32_t c__ = 0;
-	uint32_t d__ = 0;
-	uint32_t e__ = 0;
-	uint32_t f__ = 0;
-	uint32_t g__ = 0;
-	uint32_t h__ = 0;
+	uint32_t hash__ = {0};
 
 	uint32_t W[64];
 
 	// Process iteration
-	for (uint32_t i = 0; i <= blockamount; i++)
+	for (uint32_t i = 1; i <= blockamount; i++)
 	{
 		
 		// Prepare messageschedule (W)
 		for (uint32_t t = 0; t <= 15; t++)
 		{
-			W[t] = (uint32_t)messageblocks[i][t];
+			W[t] = messageblocks[i][t];
 		}
 
 		for (uint32_t t = 16; t <= 63; t++)
 		{
-			W[t] = (SSIG1(W[t-2])) + W[t-7] + (SSIG0(W[t-15])) + W[t-16];
+			W[t] = SSIG1(W[t-2]) + W[t-7] + SSIG0(W[t-15]) + W[t-16];
 		}
 
 		for (uint32_t t = 0; t <= 63; t++)
 		{
-			uint32_t T1 = (BSIG1(e)) + (CH(e,f,g)) + K[t] + W[t] + h;
-			uint32_t T2 = (BSIG0(a)) + (MAJ(a,b,c));
+			uint32_t T1 = BSIG1(e) + CH(e,f,g) + K[t] + W[t] + h;
+			uint32_t T2 = BSIG0(a) + MAJ(a,b,c);
 			h = g;
 			g = f;
 			f = e;
@@ -129,24 +126,16 @@ int sha224(char* string, char* hashOutput)
 			b = a;
 			a = T1 + T2;
 		}
-
-		a = a__ = a + a__;
-		b = b__ = b + b__;
-		c = c__ = c + c__;
-		d = d__ = d + d__;
-		e = e__ = e + e__;
-		f = f__ = f + f__;
-		g = g__ = g + g__;
-		h = h__ = h + h__;
 	}
 	
-	printBits(a);
-	printBits(b);
-	printBits(c);
-	printBits(d);
-	printBits(e);
-	printBits(f);
-	printBits(g);
+	hashOutput[0] = a;
+	hashOutput[1] = b;
+	hashOutput[2] = c;
+	hashOutput[3] = d;
+	hashOutput[4] = e;
+	hashOutput[5] = f;
+	hashOutput[6] = g;
+	hashOutput[7] = '\0';
 
 	return 0;
 }
@@ -155,7 +144,11 @@ int main(int argc, char** argv)
 {	
 	char hash[8];
 	
-	sha224("abc", hash);
+	sha224(argv[1], hash);
+	
+	printf("%s\n",hash);
+	
+	for (int i = 0; i<=7; i++) {printBits(hash[i]);}
 	
 	return 0;
 }
