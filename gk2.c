@@ -20,13 +20,27 @@ typedef unsigned int		uint32_t;
 typedef unsigned char		uint8_t;
 
 
-void printBits(uint32_t x) {
+void printBits(uint32_t x)
+{
+	uint32_t y = x;
+
 	for (uint32_t i = 0; i < sizeof(uint32_t)*8; i++)
 	{
 		printf("%d",(x&0x80000000?1:0));
-		if (((i+1)%8)==0) {printf(".");}
+		if (((i+1)%8)==0 && i < (sizeof(uint32_t)*8)-1) {printf(".");}
 		x = x<<1;
+
 	}
+	
+	printf("	0x");
+	for (uint32_t i = 0; i < sizeof(uint32_t)*2; i++)
+	{
+		uint8_t z = ((y&0xf0000000)>>(sizeof(uint32_t)*7))+48; // Shift by 28
+		y = y<<4;
+		if (z > 57) {z = 'A' + z-58;}
+		printf("%c",z);
+	}
+
 	printf("\n");
 	return;
 }
