@@ -83,11 +83,15 @@ int sha224(char* string, char* hashOutput)
 
 	messageblocks[mbindex/64][mbindex-(mbindex/64)-1] = 0x80;
 
+		;;	printf("wtf1> %p\n", hashOutput);
+
 	// Insert messagelength as last 8 bytes (MD strengthening)
 	for (uint32_t i = 0; i < 8; i++)
 	{
 		messageblocks[messagelength/64][63-i] = (uint8_t)((messagelength>>(i*8)) & 0xff);
 	}
+	
+		;;	printf("wtf2> %p\n", hashOutput);
 
 	uint32_t K[64] = {
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
@@ -167,7 +171,7 @@ int sha224(char* string, char* hashOutput)
 		g = g__ = g + g__;
 		h = h__ = h + h__;
 	}
-/*
+	/*
 	printBits(a);
 	printBits(b);
 	printBits(c);
@@ -177,14 +181,22 @@ int sha224(char* string, char* hashOutput)
 	printBits(g);
 	*/
 
+/*
 	gethex(a, &hashOutput[0]);
+		printf("%s\n", hashOutput);
 	gethex(b, &hashOutput[8]);
+		printf("%s\n", hashOutput);
 	gethex(c, &hashOutput[16]);
+		printf("%s\n", hashOutput);
 	gethex(d, &hashOutput[24]);
+		printf("%s\n", hashOutput);
 	gethex(e, &hashOutput[32]);
+		printf("%s\n", hashOutput);
 	gethex(f, &hashOutput[40]);
+		printf("%s\n", hashOutput);
 	gethex(g, &hashOutput[48]);
-
+		printf("%s\n", hashOutput);
+*/
 	return 0;
 }
 
@@ -195,7 +207,7 @@ int main(int argc, char** argv)
 
 	sha224("abc", hash);
 
-	printf("%s\n", hash);
+	//printf("-->%s\n", hash);
 	
 	return 0;
 }
