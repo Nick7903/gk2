@@ -7,7 +7,7 @@
 #define CH(x,y,z)	((x & y) ^ (~x & z))
 #define MAJ(x,y,z)	(((x & y) ^ (x & z)) ^ (y & z))
 
-#define BSIG0(x)	((ROTR(x,2)) ^ (ROTR(x,12))) ^ (ROTR(x,22))
+#define BSIG0(x)	((ROTR(x,2)) ^ (ROTR(x,13))) ^ (ROTR(x,22))
 #define BSIG1(x)	((ROTR(x,6)) ^ (ROTR(x,11))) ^ (ROTR(x,25))
 
 #define SSIG0(x)	((ROTR(x,7)) ^ (ROTR(x,18))) ^ (x>>3)
@@ -86,10 +86,12 @@ int sha224(char* string, char* hashOutput)
 	// Insert messagelength as last 8 bytes (MD strengthening)
 	for (uint32_t i = 0; i < 8; i++)
 	{
-		messageblocks[messagelength/64][63-i] = (uint8_t)((messagelength>>(i*8)) & 0xff);
+		messageblocks[messagelength/64][63-i] = (uint8_t)(((messagelength*8)>>(i*8)) & 0xff);
 	}
+	
+	//for (int i = 0; i <= 60; i=i+4) {printBits(messageblocks[0][i]<<24 | messageblocks[0][i+1]<<16 | messageblocks[0][i+2]<<8 | messageblocks[0][i+3]);}
 
-	uint32_t K[64] = {
+	const uint32_t K[64] = {
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
       		0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
       		0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
@@ -116,7 +118,7 @@ int sha224(char* string, char* hashOutput)
 	uint32_t e = 0xffc00b31;
 	uint32_t f = 0x68581511;
 	uint32_t g = 0x64f98fa7;
-	uint32_t h = 0xbefa4fa4; // Irrelevant for sha224
+	uint32_t h = 0xbefa4fa4;
 
 	uint32_t a__ = 0;
 	uint32_t b__ = 0;
@@ -130,13 +132,13 @@ int sha224(char* string, char* hashOutput)
 	uint32_t W[64];
 
 	// Process iteration
-	for (uint32_t i = 0; i <= blockamount; i++)
+	for (uint32_t i = 0; i < blockamount; i++)
 	{
 		
 		// Prepare messageschedule (W)
-		for (uint32_t t = 0; t <= 15; t++)
+		for (uint32_t t = 0; t <= 15; t++) // FIX THIS LATER
 		{
-			W[t] = (uint32_t)messageblocks[i][t];
+			W[t] = (uint32_t)(messageblocks[i][t*4]<<24 | messageblocks[i][t*4+1]<<16 | messageblocks[i][t*4+2]<<8 | messageblocks[i][t*4+3]);
 		}
 
 		for (uint32_t t = 16; t <= 63; t++)
@@ -175,7 +177,7 @@ int sha224(char* string, char* hashOutput)
 	printBits(e);
 	printBits(f);
 	printBits(g);
-	*/
+*/
 
 	gethex(a, &hashOutput[0]);
 	gethex(b, &hashOutput[8]);
@@ -193,9 +195,17 @@ int main(int argc, char** argv)
 	char hash[57] = {0};
 	hash[56] = '\0';
 
-	sha224("abc", hash);
+	int inputlength = 700;
+	inputlength = 1000000;
+	char input[2000000];
+	for (int i = 0; i < inputlength; i++) {input[i] = 'a';}
+	input[inputlength] = '\0';
 
-	printf("%s\n", hash);
+	input[0]='a'; input[1]='b'; input[2]='c'; input[3]='\0';
+
+	sha224(input, hash);
+
+	printf("%s\n%s\n", input, hash);
 	
 	return 0;
 }
