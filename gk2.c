@@ -13,8 +13,6 @@
 #define SSIG0(x)	((ROTR(x,7)) ^ (ROTR(x,18))) ^ (x>>3)
 #define SSIG1(x)	((ROTR(x,17)) ^ (ROTR(x,19))) ^ (x>>10)
 
-#define uint32_MAX 	4294967295
-
 typedef unsigned long long	uint64_t;
 typedef unsigned int		uint32_t;
 typedef unsigned char		uint8_t;
@@ -51,9 +49,8 @@ void gethex(uint32_t y, char* destination)
 	{
 		uint8_t z = ((y&0xf0000000)>>(sizeof(uint32_t)*7))+48; // Shift by 28
 		y = y<<4;
-		if (z > 57) {z = 'A' + z-58;}
+		if (z > 57) {z = 'a' + z-58;}
 		destination[i] = z;
-		//printf("%c-%c :: %p\n",z,destination[i], destination);
 	}
 
 	return;
@@ -85,12 +82,10 @@ int sha224(char* string, char* hashOutput)
 	}
 
 	// Insert messagelength as last 8 bytes (MD strengthening)
-	for (uint32_t i = 0; i < sizeof(uint32_t); i++)
+	for (uint32_t i = 0; i < sizeof(uint64_t); i++)
 	{
 		messageblocks[messagebytes-1-i] = (uint8_t)((messagelength*8)>>(i*8) & 0xff);
 	}
-	
-	//for (int i = 0; i <= 60; i=i+4) {printBits(messageblocks[0][i]<<24 | messageblocks[0][i+1]<<16 | messageblocks[0][i+2]<<8 | messageblocks[0][i+3]);}
 
 	const uint32_t K[64] = {
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
@@ -111,33 +106,22 @@ int sha224(char* string, char* hashOutput)
 	      	0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 	};
 
-
-	uint32_t a = 0xc1059ed8;
-	uint32_t b = 0x367cd507;
-	uint32_t c = 0x3070dd17;
-	uint32_t d = 0xf70e5939;
-	uint32_t e = 0xffc00b31;
-	uint32_t f = 0x68581511;
-	uint32_t g = 0x64f98fa7;
-	uint32_t h = 0xbefa4fa4;
-
-	uint32_t a__ = 0;
-	uint32_t b__ = 0;
-	uint32_t c__ = 0;
-	uint32_t d__ = 0;
-	uint32_t e__ = 0;
-	uint32_t f__ = 0;
-	uint32_t g__ = 0;
-	uint32_t h__ = 0;
+	uint32_t a, a__; a = a__ = 0xc1059ed8;
+	uint32_t b, b__; b = b__ = 0x367cd507;
+	uint32_t c, c__; c = c__ = 0x3070dd17;
+	uint32_t d, d__; d = d__ = 0xf70e5939;
+	uint32_t e, e__; e = e__ = 0xffc00b31;
+	uint32_t f, f__; f = f__ = 0x68581511;
+	uint32_t g, g__; g = g__ = 0x64f98fa7;
+	uint32_t h, h__; h = h__ = 0xbefa4fa4;
 
 	uint32_t W[64];
 
 	// Process iteration
 	for (uint32_t i = 0; i < messagebytes; i = i+64)
 	{
-		
-		// Prepare messageschedule (W)
-		for (uint32_t t = 0; t <= 15; t++) // FIX THIS LATER
+
+		for (uint32_t t = 0; t <= 15; t++)
 		{
 			W[t] = (uint32_t)(messageblocks[i+(t*4)]<<24 | messageblocks[i+(t*4+1)]<<16 | messageblocks[i+(t*4+2)]<<8 | messageblocks[i+(t*4+3)]);
 		}
@@ -170,15 +154,6 @@ int sha224(char* string, char* hashOutput)
 		g = g__ = g + g__;
 		h = h__ = h + h__;
 	}
-/*
-	printBits(a);
-	printBits(b);
-	printBits(c);
-	printBits(d);
-	printBits(e);
-	printBits(f);
-	printBits(g);
-*/
 
 	gethex(a, &hashOutput[0]);
 	gethex(b, &hashOutput[8]);
@@ -196,17 +171,9 @@ int main(int argc, char** argv)
 	char hash[57] = {0};
 	hash[56] = '\0';
 
-	int inputlength = 700;
-	//inputlength = 1000000;
-	char input[2000000];
-	for (int i = 0; i < inputlength; i++) {input[i] = 'a';}
-	input[inputlength] = '\0';
+	sha224(argv[1], hash);
 
-	//input[0]='a'; input[1]='b'; input[2]='c'; input[3]='\0';
-
-	sha224(input, hash);
-
-	printf("%s\n%s\n", input, hash);
+	printf("%s\n", hash);
 	
 	return 0;
 }
