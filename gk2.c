@@ -66,27 +66,28 @@ int sha224(char* string, char* hashOutput)
 	for (char* q = string; *q != '\0'; q++) {messagelength++;}
 
 	// Create and initialize output messageblocks
-	uint32_t blockamount = ((messagelength+9)/64)+1; // +8 because of MD strengthening, +1 for 0x80 byte
-	uint8_t messageblocks[blockamount][64];
-	for (uint8_t* a = (uint8_t*)messageblocks, * b = a+(blockamount*64); a < b; a++) {*a = 0;}
+	uint32_t messagebytes = ((messagelength+8+1+64)/64)*64; // +8 because of MD strengthening, +1 for 0x80 byte
+	uint8_t messageblocks[messagebytes];
 
 	// Move input into messageblocks
-	int mbindex = 0;
-
-	for (; mbindex < messagelength; mbindex++)
+	for (uint32_t i = 0; i < messagelength; i++)
 	{
-		messageblocks[mbindex/64][mbindex-((mbindex/64)*64)] = string[mbindex];
+		messageblocks[i] = string[i];
 	}
 
 	// Set messagelength+1 to 0b10000000
-	mbindex++;
+	messageblocks[messagelength] = 0x80;
 
-	messageblocks[mbindex/64][mbindex-(mbindex/64)-1] = 0x80;
+	// Pad with zeroes until MD start
+	for (uint32_t i = messagelength+1; i < messagebytes-8; i++)
+	{
+		messageblocks[i] = 0;
+	}
 
 	// Insert messagelength as last 8 bytes (MD strengthening)
-	for (uint32_t i = 0; i < 8; i++)
+	for (uint32_t i = 0; i < sizeof(uint32_t); i++)
 	{
-		messageblocks[messagelength/64][63-i] = (uint8_t)(((messagelength*8)>>(i*8)) & 0xff);
+		messageblocks[messagebytes-1-i] = (uint8_t)((messagelength*8)>>(i*8) & 0xff);
 	}
 	
 	//for (int i = 0; i <= 60; i=i+4) {printBits(messageblocks[0][i]<<24 | messageblocks[0][i+1]<<16 | messageblocks[0][i+2]<<8 | messageblocks[0][i+3]);}
@@ -132,13 +133,13 @@ int sha224(char* string, char* hashOutput)
 	uint32_t W[64];
 
 	// Process iteration
-	for (uint32_t i = 0; i < blockamount; i++)
+	for (uint32_t i = 0; i < messagebytes; i = i+64)
 	{
 		
 		// Prepare messageschedule (W)
 		for (uint32_t t = 0; t <= 15; t++) // FIX THIS LATER
 		{
-			W[t] = (uint32_t)(messageblocks[i][t*4]<<24 | messageblocks[i][t*4+1]<<16 | messageblocks[i][t*4+2]<<8 | messageblocks[i][t*4+3]);
+			W[t] = (uint32_t)(messageblocks[i+(t*4)]<<24 | messageblocks[i+(t*4+1)]<<16 | messageblocks[i+(t*4+2)]<<8 | messageblocks[i+(t*4+3)]);
 		}
 
 		for (uint32_t t = 16; t <= 63; t++)
@@ -196,12 +197,12 @@ int main(int argc, char** argv)
 	hash[56] = '\0';
 
 	int inputlength = 700;
-	inputlength = 1000000;
+	//inputlength = 1000000;
 	char input[2000000];
 	for (int i = 0; i < inputlength; i++) {input[i] = 'a';}
 	input[inputlength] = '\0';
 
-	input[0]='a'; input[1]='b'; input[2]='c'; input[3]='\0';
+	//input[0]='a'; input[1]='b'; input[2]='c'; input[3]='\0';
 
 	sha224(input, hash);
 
