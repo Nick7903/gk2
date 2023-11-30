@@ -27,7 +27,6 @@ void printBits(uint32_t x)
 		printf("%d",(x&0x80000000?1:0));
 		if ((((i+1)%8)==0) && (i < (sizeof(uint32_t)*8)-1)) {printf(".");}
 		x = x<<1;
-
 	}
 	
 	printf("	0x");
@@ -60,9 +59,9 @@ int sha224(char* string, char* hashOutput)
 {
 	// Get length of input
 	uint64_t messagelength = 0;
-	for (char* q = string; *q != '\0'; q++) {messagelength++;}
+	for (char* q = string; *q != '\0'; q++) { messagelength++; }
 
-	// Create and initialize output messageblocks
+	// Create messageblocks
 	uint32_t messagebytes = ((messagelength+8+1+64)/64)*64; // +8 because of MD strengthening, +1 for 0x80 byte
 	uint8_t messageblocks[messagebytes];
 
@@ -120,7 +119,6 @@ int sha224(char* string, char* hashOutput)
 	// Process iteration
 	for (uint32_t i = 0; i < messagebytes; i = i+64)
 	{
-
 		for (uint32_t t = 0; t <= 15; t++)
 		{
 			W[t] = (uint32_t)(messageblocks[i+(t*4)]<<24 | messageblocks[i+(t*4+1)]<<16 | messageblocks[i+(t*4+2)]<<8 | messageblocks[i+(t*4+3)]);
