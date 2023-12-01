@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #define ROTR(x,n)	(x>>n) | (x<<(32-n))
@@ -13,9 +14,7 @@
 #define SSIG0(x)	((ROTR(x,7)) ^ (ROTR(x,18))) ^ (x>>3)
 #define SSIG1(x)	((ROTR(x,17)) ^ (ROTR(x,19))) ^ (x>>10)
 
-typedef unsigned long long	uint64_t;
-typedef unsigned int		uint32_t;
-typedef unsigned char		uint8_t;
+typedef enum {sha224, sha256} sha2_t;
 
 typedef struct {
 
@@ -24,9 +23,11 @@ typedef struct {
 
 	uint64_t inputbytes;
 
+	sha2_t type;
+
 	uint32_t H[8];
 
-} sha224_ctx;
+} sha2_ctx;
 
 
 void printbits(uint32_t x)
@@ -53,22 +54,38 @@ void printbits(uint32_t x)
 	return;
 }
 
-void sha224_init(sha224_ctx* ctx)
+void sha2_init(sha2_ctx* ctx, sha2_t type)
 {
 	ctx->inputbuffersize = 0;
 	ctx->inputbytes = 0;
+	ctx->type = type;
 
-	ctx->H[0] = 0xc1059ed8;
-	ctx->H[1] = 0x367cd507;
-	ctx->H[2] = 0x3070dd17;
-	ctx->H[3] = 0xf70e5939;
-	ctx->H[4] = 0xffc00b31;
-	ctx->H[5] = 0x68581511;
-	ctx->H[6] = 0x64f98fa7;
-	ctx->H[7] = 0xbefa4fa4;
+	if (!type) // sha224
+	{
+		ctx->H[0] = 0xc1059ed8;
+		ctx->H[1] = 0x367cd507;
+		ctx->H[2] = 0x3070dd17;
+		ctx->H[3] = 0xf70e5939;
+		ctx->H[4] = 0xffc00b31;
+		ctx->H[5] = 0x68581511;
+		ctx->H[6] = 0x64f98fa7;
+		ctx->H[7] = 0xbefa4fa4;
+	} else
+	{
+		ctx->H[0] = 0x6a09e667;
+		ctx->H[1] = 0xbb67ae85;
+		ctx->H[2] = 0x3c6ef372;
+		ctx->H[3] = 0xa54ff53a;
+		ctx->H[4] = 0x510e527f;
+		ctx->H[5] = 0x9b05688c;
+		ctx->H[6] = 0x1f83d9ab;
+		ctx->H[7] = 0x5be0cd19;
+	}
+
+	return;
 }
 
-void sha224_iterate(sha224_ctx* ctx)
+void sha2_iterate(sha2_ctx* ctx)
 {
 	const uint32_t K[64] = {
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
@@ -139,8 +156,10 @@ void sha224_iterate(sha224_ctx* ctx)
 	return;
 }
 
-void sha224_append(sha224_ctx* ctx, uint8_t* input, size_t length)
+void sha2_append(sha2_ctx* ctx, void* inputbytes, size_t length)
 {
+	uint8_t* input = inputbytes;
+
 	uint32_t next = 0;
 
 	while (length)
@@ -156,50 +175,55 @@ void sha224_append(sha224_ctx* ctx, uint8_t* input, size_t length)
 
 		if (ctx->inputbuffersize >= 64)
 		{
-			sha224_iterate(ctx);
+			sha2_iterate(ctx);
 		}
 	}
 
 	return;
 }
 
-void sha224_digest(sha224_ctx* ctx, uint8_t* output)
+void sha2_digest(sha2_ctx* ctx, uint8_t* output)
 {
+	// Make copy, so the original can be appended with more data
+	sha2_ctx final = *ctx;
+
 	// Set byte after input to 0b10000000
-	ctx->inputbuffer[ctx->inputbuffersize] = 0x80;
-	ctx->inputbuffersize++;
+	final.inputbuffer[final.inputbuffersize] = 0x80;
+	final.inputbuffersize++;
 
 	// Make sure there is space for MD strengthening
-	if ((64 - ctx->inputbuffersize) < 8)
+	if ((64 - final.inputbuffersize) < 8)
 	{
-		for (uint32_t i = ctx->inputbuffersize; i < 64; i++)
+		for (uint32_t i = final.inputbuffersize; i < 64; i++)
 		{
-			ctx->inputbuffer[i] = 0;
+			final.inputbuffer[i] = 0;
 		}
 
-		sha224_iterate(ctx);
+		sha2_iterate(&final);
 	}
 
 	// Pad with zeroes until MD strengthening
-	for (uint32_t i = ctx->inputbuffersize; i < 56; i++)
+	for (uint32_t i = final.inputbuffersize; i < 56; i++)
 	{
-		ctx->inputbuffer[i] = 0;
+		final.inputbuffer[i] = 0;
 	}
 
-	// Insert length as last 8 bytes (MD strengthening)
+	// Insert total input length as last 8 bytes (MD strengthening)
 	for (uint32_t i = 0; i < sizeof(uint64_t); i++)
 	{
-		ctx->inputbuffer[63-i] = (uint8_t)((ctx->inputbytes*8)>>(i*8) & 0xff);
+		final.inputbuffer[63-i] = (uint8_t)((final.inputbytes*8)>>(i*8) & 0xff);
 	}
 
-	sha224_iterate(ctx);
+	// Iterate last block
+	sha2_iterate(&final);
 
-	for (uint32_t i = 0; i < 7; i++)
+	// Write the finished hash as hex string to output
+	for (uint32_t i = 0; i < (final.type ? 8:7); i++)
 	{
 		for (uint32_t j = 0; j < sizeof(uint32_t)*2; j++)
 		{
-			uint8_t z = ((ctx->H[i]&0xf0000000)>>(sizeof(uint32_t)*7))+48; // Shift by 28
-			ctx->H[i] = ctx->H[i]<<4;
+			uint8_t z = ((final.H[i]&0xf0000000)>>(sizeof(uint32_t)*7))+48; // Shift by 28
+			final.H[i] = final.H[i]<<4;
 			if (z > 57) {z = 'a' + z-58;}
 			output[(i*8)+j] = z;
 		}
@@ -210,19 +234,34 @@ void sha224_digest(sha224_ctx* ctx, uint8_t* output)
 
 int main(int argc, char** argv)
 {	
-	char hash[57] = {0};
-	hash[56] = '\0';
+	char hash[65] = {0};
+	hash[64] = '\0';
 
+	/*
 	size_t size = 0;
-	while (argv[1][size] != '\0') {size++;}
+	while (argv[1][size] != '\0') { size++; }
 
-	sha224_ctx myctx;
+	sha2_ctx myctx;
+	sha2_init(&myctx);
 
-	sha224_init(&myctx);
-	sha224_append(&myctx, (uint8_t*)argv[1], size);
-	sha224_digest(&myctx, (uint8_t*)hash);
+	sha2_append(&myctx, (uint8_t*)argv[1], size);
+	sha2_digest(&myctx, (uint8_t*)hash);
+	
+	printf("%s", hash);
+	*/
 
-	printf("%s\n", hash);
+	size_t size = 100;
+
+	sha2_ctx myctx;
+	sha2_init(&myctx, sha224);
+
+	for (uint32_t i = 1; i <= 1000; i++)
+	{
+	sha2_append(&myctx, (uint8_t*)"adnsiaodosaiojdisaidjsaoijdiosajoifnowaeuqfj1f0821fj2019jf0398j801j0jf3081jf83j08fj3801j8f3j18jf3801", size);
+	sha2_digest(&myctx, (uint8_t*)hash);
+	
+	printf("%lu: %s\n", i, hash);
+	}
 
 	return 0;
 }
