@@ -60,8 +60,8 @@ void sha2_init(sha2_ctx* ctx, sha2_t type)
 	ctx->inputbytes = 0;
 	ctx->type = type;
 
-	if (!type) // sha224
-	{
+	if (!type)
+	{	// sha224
 		ctx->H[0] = 0xc1059ed8;
 		ctx->H[1] = 0x367cd507;
 		ctx->H[2] = 0x3070dd17;
@@ -71,7 +71,7 @@ void sha2_init(sha2_ctx* ctx, sha2_t type)
 		ctx->H[6] = 0x64f98fa7;
 		ctx->H[7] = 0xbefa4fa4;
 	} else
-	{
+	{	// sha256
 		ctx->H[0] = 0x6a09e667;
 		ctx->H[1] = 0xbb67ae85;
 		ctx->H[2] = 0x3c6ef372;
@@ -182,8 +182,10 @@ void sha2_append(sha2_ctx* ctx, void* inputbytes, size_t length)
 	return;
 }
 
-void sha2_digest(sha2_ctx* ctx, uint8_t* output)
+void sha2_digest(sha2_ctx* ctx, void* outputbytes)
 {
+	uint8_t* output = outputbytes;
+
 	// Make copy, so the original can be appended with more data
 	sha2_ctx final = *ctx;
 
@@ -255,9 +257,9 @@ int main(int argc, char** argv)
 	sha2_ctx myctx;
 	sha2_init(&myctx, sha224);
 
-	for (uint32_t i = 1; i <= 1000; i++)
+	for (uint32_t i = 1; i <= 999; i++)
 	{
-	sha2_append(&myctx, (uint8_t*)"adnsiaodosaiojdisaidjsaoijdiosajoifnowaeuqfj1f0821fj2019jf0398j801j0jf3081jf83j08fj3801j8f3j18jf3801", size);
+	sha2_append(&myctx, "adnsiaodosaiojdisaidjsaoijdiosajoifnowaeuqfj1f0821fj2019jf0398j801j0jf3081jf83j08fj3801j8f3j18jf3801", size);
 	sha2_digest(&myctx, (uint8_t*)hash);
 	
 	printf("%lu: %s\n", i, hash);
