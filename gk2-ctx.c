@@ -20,7 +20,7 @@ typedef unsigned char		uint8_t;
 typedef struct {
 
 	uint8_t inputbuffer[64];
-	uint32_t inputbuffersize; //if inputbuffersize > 64 bytes do like a step
+	uint32_t inputbuffersize;
 
 	uint64_t inputbytes;
 
@@ -141,13 +141,17 @@ void sha224_iterate(sha224_ctx* ctx)
 
 void sha224_append(sha224_ctx* ctx, uint8_t* input, size_t length)
 {
-	while (length > 0)
+	uint32_t next = 0;
+
+	while (length)
 	{
-		for (uint32_t i = 0; length && (ctx->inputbuffersize < 64); i++, ctx->inputbuffersize++)
+		while (length && (ctx->inputbuffersize < 64))
 		{
-			ctx->inputbuffer[ctx->inputbuffersize] = input[i];
+			ctx->inputbuffer[ctx->inputbuffersize] = input[next];
+			ctx->inputbuffersize++;
 			ctx->inputbytes++;
 			length--;
+			next++;
 		}
 
 		if (ctx->inputbuffersize >= 64)
@@ -185,12 +189,10 @@ void sha224_digest(sha224_ctx* ctx, uint8_t* output)
 	// Insert length as last 8 bytes (MD strengthening)
 	for (uint32_t i = 0; i < sizeof(uint64_t); i++)
 	{
-		ctx->inputbuffer[63-i] = (uint8_t)((ctx->inputbytes*8)>>(i*8) & 0xff); // -1 for 0x80
+		ctx->inputbuffer[63-i] = (uint8_t)((ctx->inputbytes*8)>>(i*8) & 0xff);
 	}
 
 	sha224_iterate(ctx);
-
-	//for (int i=0;i<7;i++){printbits(ctx->H[i]);}
 
 	for (uint32_t i = 0; i < 7; i++)
 	{
@@ -211,11 +213,6 @@ int main(int argc, char** argv)
 	char hash[57] = {0};
 	hash[56] = '\0';
 
-	// RFC 3875 tests:
-	//char input[1] = "a";
-	//char input[56] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
-	//char input[1000000]; for (int i=0;i<1000000;i++) { test[i] = 'a'; }
-
 	size_t size = 0;
 	while (argv[1][size] != '\0') {size++;}
 
@@ -223,10 +220,9 @@ int main(int argc, char** argv)
 
 	sha224_init(&myctx);
 	sha224_append(&myctx, (uint8_t*)argv[1], size);
-	//sha224_append(&myctx, (uint8_t*)input, sizeof(input));
 	sha224_digest(&myctx, (uint8_t*)hash);
 
-	printf("%s\n%s\n", argv[1], hash);
-	
+	printf("%s\n", hash);
+
 	return 0;
 }
