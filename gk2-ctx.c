@@ -54,6 +54,7 @@ void printbits(uint32_t x)
 	return;
 }
 
+
 void sha2_init(sha2_ctx* ctx, sha2_t type)
 {
 	ctx->inputbuffersize = 0;
@@ -211,7 +212,7 @@ void sha2_digest(sha2_ctx* ctx, void* outputbytes)
 	}
 
 	// Insert total input length as last 8 bytes (MD strengthening)
-	for (uint32_t i = 0; i < sizeof(uint64_t); i++)
+	for (uint32_t i = 0; i < 8; i++)
 	{
 		final.inputbuffer[63-i] = (uint8_t)((final.inputbytes*8)>>(i*8) & 0xff);
 	}
@@ -225,7 +226,7 @@ void sha2_digest(sha2_ctx* ctx, void* outputbytes)
 		for (uint32_t j = 0; j < sizeof(uint32_t)*2; j++)
 		{
 			uint8_t z = ((final.H[i]&0xf0000000)>>(sizeof(uint32_t)*7))+48; // Shift by 28
-			final.H[i] = final.H[i]<<4;
+			final.H[i] = final.H[i]<<4;	
 			if (z > 57) {z = 'a' + z-58;}
 			output[(i*8)+j] = z;
 		}
@@ -235,35 +236,34 @@ void sha2_digest(sha2_ctx* ctx, void* outputbytes)
 }
 
 int main(int argc, char** argv)
-{	
+{
 	char hash[65] = {0};
 	hash[64] = '\0';
 
-	/*
-	size_t size = 0;
-	while (argv[1][size] != '\0') { size++; }
+	sha2_ctx ctx;
+	sha2_init(&ctx, sha224);
 
-	sha2_ctx myctx;
-	sha2_init(&myctx);
-
-	sha2_append(&myctx, (uint8_t*)argv[1], size);
-	sha2_digest(&myctx, (uint8_t*)hash);
-	
-	printf("%s", hash);
-	*/
-
-	size_t size = 100;
-
-	sha2_ctx myctx;
-	sha2_init(&myctx, sha224);
-
-	for (uint32_t i = 1; i <= 999; i++)
+	if (argv[1])
 	{
-	sha2_append(&myctx, "adnsiaodosaiojdisaidjsaoijdiosajoifnowaeuqfj1f0821fj2019jf0398j801j0jf3081jf83j08fj3801j8f3j18jf3801", size);
-	sha2_digest(&myctx, (uint8_t*)hash);
-	
-	printf("%lu: %s\n", i, hash);
+		size_t size = 0;
+		while (argv[1][size] != '\0') { size++; }
+
+		sha2_append(&ctx, argv[1], size);
+	} else
+	if (!feof(stdin))
+	{
+		char input[1<<16];
+		scanf(input);
+
+		sha2_append(&ctx, input, sizeof(input));
+	} else
+	{
+		return 1;
 	}
+
+	sha2_digest(&ctx, hash);
+
+	printf("%s", hash);
 
 	return 0;
 }
