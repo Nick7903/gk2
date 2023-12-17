@@ -16,8 +16,8 @@
 
 typedef enum {sha224, sha256} sha2_t;
 
-typedef struct {
-
+typedef struct
+{
 	uint8_t inputbuffer[64];
 	uint32_t inputbuffersize;
 
@@ -30,21 +30,22 @@ typedef struct {
 } sha2_ctx;
 
 
-void printbits(uint32_t x)
+void printbits(const void* var)
 {
-	uint32_t y = x;
+    uint64_t x = *(uint64_t*) var;
+    uint64_t y = *(uint64_t*) var;
 
-	for (uint32_t i = 0; i < sizeof(uint32_t)*8; i++)
+	for (uint32_t i = 0; i < 64; i++)
 	{
-		printf("%d",(x&0x80000000?1:0));
-		if ((((i+1)%8)==0) && (i < (sizeof(uint32_t)*8)-1)) {printf(".");}
+		printf("%d",(x&0x8000000000000000?1:0));
+		if ((((i+1)%8)==0) && (i < 63)) {printf(".");}
 		x = x<<1;
 	}
 	
-	printf("	0x");
-	for (uint32_t i = 0; i < sizeof(uint32_t)*2; i++)
+	printf("    0x");
+	for (uint32_t i = 0; i < 16; i++)
 	{
-		uint8_t z = ((y&0xf0000000)>>(sizeof(uint32_t)*7))+48; // Shift by 28
+		uint8_t z = ((y&0xf000000000000000)>>60)+48;
 		y = y<<4;
 		if (z > 57) {z = 'A' + z-58;}
 		printf("%c",z);
@@ -237,33 +238,21 @@ void sha2_digest(sha2_ctx* ctx, void* outputbytes)
 
 int main(int argc, char** argv)
 {
+	if (argc < 2) { return 1; }
+
+	size_t size = 0;
+	for (char* a = argv[1]; *a != '\0'; a++, size++);
+
 	char hash[65] = {0};
 	hash[64] = '\0';
 
 	sha2_ctx ctx;
+
 	sha2_init(&ctx, sha224);
-
-	if (argv[1])
-	{
-		size_t size = 0;
-		while (argv[1][size] != '\0') { size++; }
-
-		sha2_append(&ctx, argv[1], size);
-	} else
-	if (!feof(stdin))
-	{
-		char input[1<<16];
-		scanf(input);
-
-		sha2_append(&ctx, input, sizeof(input));
-	} else
-	{
-		return 1;
-	}
-
+	sha2_append(&ctx, argv[1], size);
 	sha2_digest(&ctx, hash);
 
-	printf("%s", hash);
+	printf("%s\n", hash);
 
 	return 0;
 }
